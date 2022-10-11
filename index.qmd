@@ -1,0 +1,159 @@
+---
+title: "TABLE ASSIGNMENT"
+author: "GABA FOLLY NAPO"
+format: html
+editor: visual
+---
+
+## Quarto
+
+Quarto enables you to weave together content and executable code into a finished document. To learn more about Quarto see <https://quarto.org>.
+
+## Running Code
+
+When you click the **Render** button a document will be generated that includes both content and the output of embedded code. You can embed code like this:
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE)
+```
+
+
+
+```{r}
+library(tidyverse)
+library(ggplot2)
+library(ggthemes)
+library(dplyr)
+library(anytime)
+library(knitr)
+library(kableExtra)
+library(sparkline)
+library(DT)
+```
+
+
+*Description of the data and data source*
+
+For this assignment we use the data produces by the National Association of Realtors (NAR). NAR produces housing statistics on the national, regional, and metro-marketlevel where data is available. we use the national historical data (view US data) on https://www.realtor.com/research/data/ (Data from 2016 to 2022)
+
+*what you want to convey in the table*
+
+We are going to make a table that shows the median listing price, the median square feet, the price increased count, price reduced count, and the average price by state.
+
+*what functionality you put into the table and why*
+For the functionalty, we make a Tables with *kable* and *DT*. we also add Monthly patterns in Ohio State.
+
+*what formatting you put into the table and why*
+kable_styling, kable_paper are the only use in our table.
+
+```{r,warning=FALSE}
+library(tidyverse)
+house=read.csv("C:/Users/L/OneDrive/Bureau/STAA 566/TABLE/RDC_Inventory_Core_Metrics_State_History.csv",header = TRUE)
+house=house%>% rename(Date=month_date_yyyymm)
+house$Date=anydate(house$Date)
+house$Date=as.Date(house$Date,"%y-%m-%d")
+house=house %>% drop_na()
+```
+
+
+## Make a Table with kbl
+
+```{r}
+cases <- house%>% 
+  filter(Date == max(Date)) %>%
+  drop_na()
+
+# Select variable that going to be use for the table.
+house_table_1 = cases %>% 
+  select(state, median_listing_price,median_square_feet,price_increased_count,price_reduced_count,average_listing_price)
+  
+
+# make table
+Table_1 = house_table_1 %>%
+  select(state, median_listing_price,price_increased_count,price_reduced_count,average_listing_price, median_square_feet) %>%
+  kbl(escape = FALSE,
+      col.names = c("State",
+                    "Median price",
+                    "Price increased",
+                    "Price reduced",
+                    "Average Price",
+                    "Median  feet"),
+      align = c("l","r","r","r","r","r"),
+      digits = 1) %>%
+  add_header_above(c(" ","Price Evolution" = 3,  "Square Feet Evolution" = 2)) %>%
+  kable_styling(font_size=14, fixed_thead = TRUE)
+Table_1 %>% kable_paper(lightable_options = "hover", full_width = FALSE)
+Table_1
+```
+
+
+# Monthly patterns for Median listing price and Median square feet
+
+```{r}
+
+N = house %>% group_by(Date)
+cases_1 <- N%>% 
+  filter(Date == max(Date)) %>%
+  drop_na()
+
+cases_trend_1 = N%>%
+   filter(Date > max(Date)-31)
+
+## Only in Ohio
+co_recent_1 <- cases_trend_1 %>%
+  filter(state=="ohio")
+
+## Monthly patterns in Ohio
+par(mfrow=c(1,1))
+p_listing <- ggplot(co_recent_1, aes(x=Date, y=median_listing_price)) +
+  geom_point() + geom_line() +
+  theme_tufte() +
+  ylab("Monthly count") +
+  ggtitle("Ohio Median listing price")
+
+p_feet <- ggplot(co_recent_1, aes(x=Date, y=median_square_feet)) + 
+   geom_point() + geom_line() + 
+   theme_tufte() +
+   ylab("Monthly count") + 
+  ggtitle("Ohio Median Square feet")
+
+p_listing  
+p_feet
+```
+
+
+
+
+
+```{r}
+cases_trend = house %>%
+   filter(Date > max(Date)-31)
+# one row per state with more recent data
+house_table = cases%>% 
+  select(state, median_listing_price,median_square_feet,price_increased_count,price_reduced_count,average_listing_price)%>%
+  mutate(plt_MP=NA, plt_MF=NA) %>%  # this adds a column to store the plot
+  as.data.frame()
+```
+
+# Table with DT
+
+```{r}
+# make table
+DT_table = house_table %>%
+  select(state, median_listing_price,price_increased_count,price_reduced_count,average_listing_price, median_square_feet) %>%
+  datatable(colnames = c("State","Median price", "Price increased", "Price reduced","Average Price","Median  feet")) %>%
+  formatRound(columns = c(2,3,5,6),
+              digits = 1)
+DT_table 
+```
+
+
+
+
+
+
+
+
+
+
